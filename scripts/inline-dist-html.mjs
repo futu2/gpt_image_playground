@@ -40,6 +40,10 @@ function escapeStyle(contents) {
   return contents.replaceAll('</style', '<\\/style')
 }
 
+function removeRemoteCssImports(contents) {
+  return contents.replace(/@import\s*(?:url\(\s*)?["']?https?:\/\/[^"')\s]+["']?\s*\)?[^;]*;?/gi, '')
+}
+
 function escapeScript(contents) {
   return contents.replaceAll('</script', '<\\/script')
 }
@@ -72,7 +76,7 @@ async function inlineStylesheets(html, distDir) {
     const href = readAttribute(tag, 'href')
     if (!href) throw new Error(`Cannot inline stylesheet without href: ${tag}`)
 
-    const css = await readFile(assetPath(distDir, href), 'utf8')
+    const css = removeRemoteCssImports(await readFile(assetPath(distDir, href), 'utf8'))
     nextHtml = nextHtml.replace(tag, () => `<style>\n${escapeStyle(css)}\n</style>`)
   }
 

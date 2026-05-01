@@ -85,6 +85,37 @@ describe('bundleDistHtml', () => {
     )
   })
 
+  test('removes remote font and stylesheet imports from inlined CSS', async () => {
+    await withFixture(
+      {
+        'index.html': [
+          '<!doctype html>',
+          '<html>',
+          '<head>',
+          '  <link rel="stylesheet" href="./assets/index.css">',
+          '</head>',
+          '<body></body>',
+          '</html>',
+        ].join('\n'),
+        'assets/index.css': [
+          '@import url("https://fontsapi.zeoseven.com/442/main/result.css");',
+          '@import"https://cdn.jsdelivr.net/npm/@lobehub/webfont-harmony-sans-sc@1.0.0/css/index.css";',
+          'body { font-family: sans-serif; }',
+        ].join('\n'),
+      },
+      async (dir) => {
+        const outputFile = join(dir, 'release.html')
+
+        await bundleDistHtml({ distDir: dir, outputFile })
+
+        const html = await readFile(outputFile, 'utf8')
+        expect(html).toContain('body { font-family: sans-serif; }')
+        expect(html).not.toContain('https://fontsapi.zeoseven.com')
+        expect(html).not.toContain('https://cdn.jsdelivr.net')
+      },
+    )
+  })
+
   test('fails when built HTML references non-local CSS or JS assets', async () => {
     await withFixture(
       {
