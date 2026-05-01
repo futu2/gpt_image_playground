@@ -1,3 +1,4 @@
 node_modules/
 dist/
+release/
 dev-proxy.config.json

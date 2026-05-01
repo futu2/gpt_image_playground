@@ -17,8 +17,9 @@ function loadDevProxyConfig() {
   }
 }
 
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
   const devProxyConfig = command === 'serve' ? loadDevProxyConfig() : null
+  const isSingleFileBuild = mode === 'single-file'
 
   return {
     plugins: [react()],
@@ -26,6 +27,7 @@ export default defineConfig(({ command }) => {
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
       __DEV_PROXY_CONFIG__: JSON.stringify(devProxyConfig),
+      __STANDALONE_RELEASE__: JSON.stringify(isSingleFileBuild),
     },
     server: {
       host: true,
@@ -45,5 +47,16 @@ export default defineConfig(({ command }) => {
             }
           : undefined,
     },
+    build: isSingleFileBuild
+      ? {
+          assetsInlineLimit: 100_000_000,
+          cssCodeSplit: false,
+          rollupOptions: {
+            output: {
+              inlineDynamicImports: true,
+            },
+          },
+        }
+      : undefined,
   }
 })

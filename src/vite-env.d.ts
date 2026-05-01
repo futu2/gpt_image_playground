@@ -2,6 +2,7 @@
 
 declare const __APP_VERSION__: string
 declare const __DEV_PROXY_CONFIG__: unknown
+declare const __STANDALONE_RELEASE__: boolean
 
 interface ImportMetaEnv {
   readonly VITE_DEFAULT_API_URL?: string

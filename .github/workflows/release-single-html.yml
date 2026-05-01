@@ -1,0 +1,64 @@
+name: Release Standalone HTML
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release, for example v0.2.21'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-single-html-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      RELEASE_ASSET: release/gpt-image-playground.html
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:single
+      - run: npm run release:single-html
+
+      - name: Verify standalone artifact
+        run: |
+          test -s "$RELEASE_ASSET"
+          if grep -E '<script[^>]+src=|<link[^>]+rel=["'\'']stylesheet|<link[^>]+rel=["'\'']manifest' "$RELEASE_ASSET"; then
+            echo "Standalone HTML still contains external script, stylesheet, or manifest references."
+            exit 1
+          fi
+
+      - name: Create release if needed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_TAG" \
+            --notes "Standalone HTML release for $RELEASE_TAG."
+
+      - name: Upload standalone HTML
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" "$RELEASE_ASSET" --clobber
